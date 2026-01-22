@@ -15,7 +15,7 @@ SCREEN_HEIGHT = 900
 FPS = 60
 SAVE_PATH = "save.json"
 
-# Archive buttons layout
+# Archive buttons
 ARCHIVE_BUTTONS = [
     {
         "name": "植物IDE图鉴",
