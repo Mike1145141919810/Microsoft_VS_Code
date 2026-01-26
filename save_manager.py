@@ -6,7 +6,11 @@ from constants import SAVE_PATH
 class SaveManager:
     @staticmethod
     def load():
-        default_data = {"unlocked": {"1": 1, "2": 0}, "keep_progress": True}
+        default_data = {
+            "unlocked": {"1": 1, "2": 0},
+            "keep_progress": True,
+            "settings": {"music_volume": 0.1, "sfx_volume": 1.0},
+        }
         if not os.path.exists(SAVE_PATH):
             return default_data
         try:
@@ -16,6 +20,9 @@ class SaveManager:
                     data["unlocked"] = {}
                 data["unlocked"].setdefault("1", 1)
                 data["unlocked"].setdefault("2", 0)
+                settings = data.setdefault("settings", {})
+                settings.setdefault("music_volume", 0.1)
+                settings.setdefault("sfx_volume", 1.0)
                 return data
         except Exception:
             return default_data

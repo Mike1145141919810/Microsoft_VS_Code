@@ -43,16 +43,26 @@ class Game:
 
         R.load_assets()
         self.sfx_channel = pygame.mixer.Channel(6)
-        self.sfx_channel.set_volume(1.0)
         self.lose_sound_channel = pygame.mixer.Channel(7)
-        self.lose_sound_channel.set_volume(1.0)
         try:
             pygame.mixer.music.load(resource_path("resource/sounds/bgm.wav"))
-            pygame.mixer.music.set_volume(0.1)
-            pygame.mixer.music.play(-1)
         except Exception as e:
             print(f"BGM load/play failed: {e}")
         self.save_data = SaveManager.load()
+        self.settings = self.save_data.setdefault("settings", {})
+        self.settings.setdefault("music_volume", 0.1)
+        self.settings.setdefault("sfx_volume", 1.0)
+        self.options_dirty = False
+
+        sfx_vol = self.settings.get("sfx_volume", 1.0)
+        music_vol = self.settings.get("music_volume", 0.1)
+        self.sfx_channel.set_volume(sfx_vol)
+        self.lose_sound_channel.set_volume(sfx_vol)
+        try:
+            pygame.mixer.music.set_volume(music_vol)
+            pygame.mixer.music.play(-1)
+        except Exception:
+            pass
 
         self.state = "MAIN_MENU"
         self.levels = [
@@ -135,6 +145,9 @@ class Game:
         self.lose_sound_channel = pygame.mixer.Channel(7)
         self.lose_sound_active = False
 
+        self.guidance_force_hide = False
+        self.guidance_show_until = 0
+
     def run(self):
         while self.running:
             raw_events = pygame.event.get()
@@ -177,6 +190,8 @@ class Game:
                 self.update_archive(events)
             elif self.state == "CREDITS":
                 self.update_credits(events)
+            elif self.state == "OPTIONS":
+                self.update_options(events)
             elif self.state == "STORY":
                 self.update_story(events)
 
@@ -213,6 +228,49 @@ class Game:
             self.sfx_channel.play(snd)
         except Exception:
             snd.play()
+
+    def render_slider(self, label, value, x, y, events):
+        bar_w, bar_h = 320, 12
+        bar_rect = pygame.Rect(x, y + 20, bar_w, bar_h)
+        pygame.draw.rect(self.screen, (210, 210, 210), bar_rect, border_radius=4)
+        pygame.draw.rect(self.screen, (80, 80, 80), bar_rect, 2, border_radius=4)
+
+        knob_x = bar_rect.x + int(bar_rect.width * max(0.0, min(1.0, value)))
+        knob_rect = pygame.Rect(knob_x - 8, bar_rect.centery - 12, 16, 24)
+        pygame.draw.rect(self.screen, (120, 170, 255), knob_rect, border_radius=4)
+        pygame.draw.rect(self.screen, BLACK, knob_rect, 2, border_radius=4)
+
+        self.draw_text(label, x, y - 5, "default", BLACK)
+        changed = False
+        for e in events:
+            if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
+                if bar_rect.inflate(0, 24).collidepoint(e.pos):
+                    ratio = (e.pos[0] - bar_rect.x) / bar_rect.width
+                    value = max(0.0, min(1.0, ratio))
+                    changed = True
+        return value, changed
+
+    def draw_guidance_overlay(self, now):
+        show = now < self.guidance_show_until and not self.guidance_force_hide
+        if not show:
+            return
+
+        overlay = pygame.Surface((SCREEN_WIDTH, 220), pygame.SRCALPHA)
+        overlay.fill((255, 255, 255, 205))
+        self.screen.blit(overlay, (70, 120))
+        pygame.draw.rect(self.screen, BLACK, (70, 120, SCREEN_WIDTH - 140, 220), 2, border_radius=12)
+
+        self.draw_text("小提示 (按 H 隐藏/显示)", 100, 140, "title", BLACK)
+        lines = [
+            "左键点卡牌再点格子放置 IDE，右键取消选择",
+            "钱不够或卡牌冷却中会显示遮罩",
+            "点右上角铲子可移除放错的位置，ESC 暂停",
+            "僵尸穿过最左侧会直接失败",
+        ]
+        y = 200
+        for line in lines:
+            self.draw_text(line, 100, y, "default", BLACK)
+            y += 40
 
     def start_story(self, key, after_state):
         self.story_active_key = key
@@ -278,6 +336,7 @@ class Game:
 
         btn_start = pygame.Rect(90, 310, 350, 100)
         btn_load = pygame.Rect(95, 450, 425, 95)
+        btn_options = pygame.Rect(1180, 760, 360, 95)
         btn_quit = pygame.Rect(95, 590, 515, 85)
         btn_credits = pygame.Rect(95, 740, 405, 85)
 
@@ -291,6 +350,12 @@ class Game:
                 self.archive_mode = "main"
                 self.archive_message = ""
                 self.state = "ARCHIVE"
+        elif btn_options.collidepoint(mx, my):
+            pygame.draw.rect(self.screen, (240, 240, 240), btn_options, border_radius=8)
+            pygame.draw.rect(self.screen, BLACK, btn_options, 3, border_radius=8)
+            self.draw_text("OPTIONS", btn_options.centerx, btn_options.centery, "title", BLACK, center=True)
+            if self.mouse_ready() and pygame.mouse.get_pressed()[0]:
+                self.state = "OPTIONS"
         elif btn_quit.collidepoint(mx, my):
             self.screen.blit(R.get_image("hl_quit"), (0, 0))
             if self.mouse_ready() and pygame.mouse.get_pressed()[0]:
@@ -300,6 +365,67 @@ class Game:
             if self.mouse_ready() and pygame.mouse.get_pressed()[0]:
                 self.credits_page = 0
                 self.state = "CREDITS"
+
+        # Render options button when not hovered to keep it visible.
+        if not btn_options.collidepoint(mx, my):
+            pygame.draw.rect(self.screen, (220, 220, 220), btn_options, border_radius=8)
+            pygame.draw.rect(self.screen, (60, 60, 60), btn_options, 2, border_radius=8)
+            self.draw_text("OPTIONS", btn_options.centerx, btn_options.centery, "title", BLACK, center=True)
+
+    def update_options(self, events):
+        self.screen.blit(R.get_image("bg_credits"), (0, 0))
+
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((255, 255, 255, 230))
+        self.screen.blit(overlay, (0, 0))
+
+        panel = pygame.Rect(380, 180, 840, 500)
+        pygame.draw.rect(self.screen, (245, 245, 245), panel, border_radius=12)
+        pygame.draw.rect(self.screen, (70, 70, 70), panel, 3, border_radius=12)
+
+        self.draw_text("OPTIONS", panel.centerx - 70, panel.top + 30, "title", BLACK)
+        self.draw_text("Click the bar to set volume", panel.centerx - 170, panel.top + 90, "default", BLACK)
+
+        music_val = self.settings.get("music_volume", 0.1)
+        new_music, music_changed = self.render_slider("Music Volume", music_val, panel.left + 120, panel.top + 140, events)
+        if music_changed:
+            self.settings["music_volume"] = new_music
+            try:
+                pygame.mixer.music.set_volume(new_music)
+            except Exception:
+                pass
+            self.options_dirty = True
+
+        sfx_val = self.settings.get("sfx_volume", 1.0)
+        new_sfx, sfx_changed = self.render_slider("SFX Volume", sfx_val, panel.left + 120, panel.top + 230, events)
+        if sfx_changed:
+            self.settings["sfx_volume"] = new_sfx
+            self.sfx_channel.set_volume(new_sfx)
+            self.lose_sound_channel.set_volume(new_sfx)
+            self.options_dirty = True
+
+        back_rect = pygame.Rect(panel.centerx - 120, panel.bottom - 120, 240, 70)
+        pygame.draw.rect(self.screen, (220, 220, 220), back_rect, border_radius=10)
+        pygame.draw.rect(self.screen, BLACK, back_rect, 2, border_radius=10)
+        self.draw_text("BACK", back_rect.centerx, back_rect.centery, "title", BLACK, center=True)
+
+        mx, my = pygame.mouse.get_pos()
+        if back_rect.collidepoint(mx, my):
+            pygame.draw.rect(self.screen, HOVER_COLOR, back_rect, 3, border_radius=10)
+            for e in events:
+                if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
+                    self.leave_options()
+
+        for e in events:
+            if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
+                self.leave_options()
+
+    def leave_options(self):
+        if self.options_dirty:
+            self.save_data["settings"] = self.settings
+            SaveManager.save(self.save_data)
+            self.options_dirty = False
+        self.state = "MAIN_MENU"
 
     def update_level_select(self, events):
         self.screen.blit(R.get_image("bg_credits"), (0, 0))
@@ -444,7 +570,10 @@ class Game:
         self.enemies.empty()
         self.bullets.empty()
         self.wave_manager = WaveManager(self.selected_level, difficulty)
-        self.game_start_tick = pygame.time.get_ticks()
+        now = pygame.time.get_ticks()
+        self.game_start_tick = now
+        self.guidance_show_until = now + 20000
+        self.guidance_force_hide = False
         self.enemies_killed = 0
         self.win_sound_played = False
 
@@ -614,10 +743,16 @@ class Game:
 
             if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
                 self.state = "PAUSE"
+            if e.type == pygame.KEYDOWN and e.key == pygame.K_h:
+                self.guidance_force_hide = not self.guidance_force_hide
+                if not self.guidance_force_hide:
+                    self.guidance_show_until = max(self.guidance_show_until, now + 12000)
 
         self.plants.draw(self.screen)
         self.enemies.draw(self.screen)
         self.bullets.draw(self.screen)
+
+        self.draw_guidance_overlay(now)
 
         if self.warning_time < elapsed < self.spawn_delay:
             if (elapsed // 200) % 2 == 0:
