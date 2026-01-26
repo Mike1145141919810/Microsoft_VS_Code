@@ -255,19 +255,18 @@ class Game:
         if not show:
             return
 
-        overlay = pygame.Surface((SCREEN_WIDTH, 220), pygame.SRCALPHA)
+        overlay = pygame.Surface((SCREEN_WIDTH, 200), pygame.SRCALPHA)
         overlay.fill((255, 255, 255, 205))
         self.screen.blit(overlay, (70, 120))
-        pygame.draw.rect(self.screen, BLACK, (70, 120, SCREEN_WIDTH - 140, 220), 2, border_radius=12)
+        pygame.draw.rect(self.screen, BLACK, (70, 120, SCREEN_WIDTH - 140, 200), 2, border_radius=12)
 
-        self.draw_text("小提示 (按 H 隐藏/显示)", 100, 140, "title", BLACK)
         lines = [
             "左键点卡牌再点格子放置 IDE，右键取消选择",
             "钱不够或卡牌冷却中会显示遮罩",
             "点右上角铲子可移除放错的位置，ESC 暂停",
             "僵尸穿过最左侧会直接失败",
         ]
-        y = 200
+        y = 160
         for line in lines:
             self.draw_text(line, 100, y, "default", BLACK)
             y += 40
