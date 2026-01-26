@@ -263,7 +263,7 @@ class Game:
         lines = [
             "左键点卡牌再点格子放置 IDE，右键取消选择",
             "钱不够或卡牌冷却中会显示遮罩",
-            "点右上角铲子可移除放错的位置，ESC 暂停",
+            "点右上角垃圾桶可移除放错的位置，ESC 暂停",
             "僵尸穿过最左侧会直接失败",
         ]
         y = 160
@@ -670,6 +670,8 @@ class Game:
 
         mx, my = pygame.mouse.get_pos()
 
+        hovered_slot_idx = None
+
         for i, slot_rect in enumerate(self.slot_rects):
             if i >= len(self.selected_plants_indices):
                 break
@@ -695,6 +697,7 @@ class Game:
                 if self.mouse_ready() and pygame.mouse.get_pressed()[0] and not self.holding_shovel:
                     if cd_remain <= 0 and self.money >= stats["cost"]:
                         self.holding_plant_idx = i
+                hovered_slot_idx = p_idx
 
         self.screen.blit(R.get_image("cleaner"), self.shovel_rect)
         if self.shovel_rect.collidepoint(mx, my):
@@ -752,6 +755,24 @@ class Game:
         self.bullets.draw(self.screen)
 
         self.draw_guidance_overlay(now)
+
+        if hovered_slot_idx is not None:
+            stats = PLANT_STATS[hovered_slot_idx]
+            tip_w, tip_h = 300, 120
+            tip_x = mx + 15
+            tip_y = my + 15
+            if tip_x + tip_w > SCREEN_WIDTH:
+                tip_x = mx - tip_w - 15
+            if tip_y + tip_h > SCREEN_HEIGHT:
+                tip_y = my - tip_h - 15
+
+            pygame.draw.rect(self.screen, (240, 240, 240), (tip_x, tip_y, tip_w, tip_h))
+            pygame.draw.rect(self.screen, BLACK, (tip_x, tip_y, tip_w, tip_h), 2)
+
+            self.draw_text(stats["name"], tip_x + 10, tip_y + 10, "default", BLACK)
+            self.draw_text(f"Cost: {stats['cost']}", tip_x + 10, tip_y + 40, "default", BLACK)
+            self.draw_text(f"HP: {stats['hp']} Dmg: {stats['damage']}", tip_x + 10, tip_y + 65, "default", BLACK)
+            self.draw_text(stats["desc"], tip_x + 10, tip_y + 90, "default", (50, 50, 50))
 
         if self.warning_time < elapsed < self.spawn_delay:
             if (elapsed // 200) % 2 == 0:
