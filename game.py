@@ -144,6 +144,13 @@ class Game:
         self.lose_sound_index = 0
         self.lose_sound_channel = pygame.mixer.Channel(7)
         self.lose_sound_active = False
+        self.lose_transition_start = None
+        self.lose_cam_offset = 0
+        self.lose_enemy_pos = None
+        self.lose_enemy_start = None
+        self.lose_enemy_target = (978, 460)
+        self.lose_enemy_img_key = None
+        self.lose_enemy_id = None
 
         self.guidance_force_hide = False
         self.guidance_show_until = 0
@@ -257,8 +264,8 @@ class Game:
 
         overlay = pygame.Surface((SCREEN_WIDTH, 200), pygame.SRCALPHA)
         overlay.fill((255, 255, 255, 205))
-        self.screen.blit(overlay, (70, 120))
-        pygame.draw.rect(self.screen, BLACK, (70, 120, SCREEN_WIDTH - 140, 200), 2, border_radius=12)
+        self.screen.blit(overlay, (70, 140))
+        pygame.draw.rect(self.screen, BLACK, (70, 140, SCREEN_WIDTH - 140, 200), 2, border_radius=12)
 
         lines = [
             "左键点卡牌再点格子放置 IDE，右键取消选择",
@@ -266,7 +273,7 @@ class Game:
             "点右上角垃圾桶可移除放错的位置，ESC 暂停",
             "僵尸穿过最左侧会直接失败",
         ]
-        y = 160
+        y = 180
         for line in lines:
             self.draw_text(line, 100, y, "default", BLACK)
             y += 40
@@ -573,6 +580,12 @@ class Game:
         self.game_start_tick = now
         self.guidance_show_until = now + 20000
         self.guidance_force_hide = False
+        self.lose_transition_start = None
+        self.lose_enemy_pos = None
+        self.lose_enemy_start = None
+        self.lose_enemy_img_key = None
+        self.lose_cam_offset = 0
+        self.lose_enemy_id = None
         self.enemies_killed = 0
         self.win_sound_played = False
 
@@ -662,6 +675,12 @@ class Game:
                 self.lose_sound_sequence = ["error1"] * 5 + ["error"]
                 self.lose_sound_index = 0
                 self.lose_sound_active = True
+                self.lose_transition_start = pygame.time.get_ticks()
+                self.lose_cam_offset = 0
+                self.lose_enemy_start = (e.rect.centerx, e.rect.centery)
+                self.lose_enemy_pos = list(self.lose_enemy_start)
+                self.lose_enemy_img_key = f"enemy_{e.id+1}"
+                self.lose_enemy_id = e.id
                 if self.lose_sound_channel:
                     self.lose_sound_channel.stop()
                 return
@@ -863,27 +882,104 @@ class Game:
                 self.state = "LEVEL_SELECT"
 
     def update_lose(self, events):
-        darkness = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-        darkness.fill(BLACK)
-        darkness.set_alpha(150)
-        self.screen.blit(darkness, (0, 0))
+        now = pygame.time.get_ticks()
+        elapsed = 0
+        if self.lose_transition_start:
+            elapsed = now - self.lose_transition_start
 
-        l_img = R.get_image("img_lose")
-        l_rect = l_img.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
-        self.screen.blit(l_img, l_rect)
+        bg_lose = R.get_image("img_lose_bg") or R.get_image("bg_game1")
+        bg_map = R.get_image("bg_game2") if self.selected_level and self.selected_level.get("theme") == 2 else R.get_image("bg_game1")
+        cam_range = SCREEN_WIDTH  # push everything fully off-screen to the right
+        cam_dur = 1500
+        self.lose_cam_offset = min(cam_range, int(cam_range * (elapsed / cam_dur))) if cam_dur > 0 else cam_range
 
-        r_img = R.get_image("img_return")
-        r_rect = r_img.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 150))
-        self.screen.blit(r_img, r_rect)
+        # Clear then draw lose background sliding in from left while map/objects slide right.
+        self.screen.fill(BLACK)
 
-        if self.lose_sound_active and self.lose_sound_index < len(self.lose_sound_sequence):
-            if not self.lose_sound_channel.get_busy():
-                key = self.lose_sound_sequence[self.lose_sound_index]
-                self.sfx_channel.stop()
-                self.play_sfx(key, 1.0)
-                self.lose_sound_index += 1
-            if self.lose_sound_index >= len(self.lose_sound_sequence) and not self.lose_sound_channel.get_busy():
-                self.lose_sound_active = False
+        progress = 0 if cam_dur <= 0 else min(1.0, elapsed / cam_dur)
+        map_offset = int(cam_range * progress)  # map and objects move right
+        lose_offset = -SCREEN_WIDTH + map_offset  # lose bg enters from left to 0
+
+        if bg_lose:
+            x1 = lose_offset
+            x2 = x1 + SCREEN_WIDTH
+            self.screen.blit(bg_lose, (x1, 0))
+            self.screen.blit(bg_lose, (x2, 0))
+
+        if bg_map:
+            self.screen.blit(bg_map, (map_offset, 0))
+
+        draw_offset = map_offset
+
+        # Draw world objects frozen in place, shifted with the camera pan.
+        for p in self.plants:
+            if not hasattr(p, "image"):
+                continue
+            rect = p.rect.copy()
+            rect.x += draw_offset
+            self.screen.blit(p.image, rect)
+
+        for b in self.bullets:
+            if not hasattr(b, "image"):
+                continue
+            rect = b.rect.copy()
+            rect.x += draw_offset
+            self.screen.blit(b.image, rect)
+
+        for en in self.enemies:
+            if not hasattr(en, "image"):
+                continue
+            is_target = self.lose_enemy_id is not None and en.id == self.lose_enemy_id
+            if is_target:
+                # Target enemy drawn separately after camera move.
+                continue
+            rect = en.rect.copy()
+            rect.x += draw_offset
+            self.screen.blit(en.image, rect)
+
+        target_move_done = False
+        if self.lose_enemy_pos and self.lose_enemy_img_key and self.lose_enemy_start:
+            move_dur = 1400
+            move_delay = cam_dur
+            move_elapsed = max(0, elapsed - move_delay)
+            t = min(1.0, move_elapsed / move_dur) if move_dur > 0 else 1.0
+            sx = self.lose_enemy_start[0] + cam_range
+            sy = self.lose_enemy_start[1]
+            tx, ty = self.lose_enemy_target
+            cx = sx + (tx - sx) * t
+            cy = sy + (ty - sy) * t
+            self.lose_enemy_pos = [cx, cy]
+            e_img = R.get_image(self.lose_enemy_img_key)
+            if e_img:
+                e_rect = e_img.get_rect(center=(int(cx), int(cy)))
+                self.screen.blit(e_img, e_rect)
+            if t >= 1.0:
+                target_move_done = True
+
+        if target_move_done:
+            if self.lose_sound_active and self.lose_sound_index < len(self.lose_sound_sequence):
+                if not self.sfx_channel.get_busy():
+                    key = self.lose_sound_sequence[self.lose_sound_index]
+                    self.sfx_channel.stop()
+                    self.play_sfx(key, 1.0)
+                    self.lose_sound_index += 1
+                if self.lose_sound_index >= len(self.lose_sound_sequence) and not self.sfx_channel.get_busy():
+                    self.lose_sound_active = False
+
+        show_ui = target_move_done and (not self.lose_sound_active or (self.lose_sound_index >= len(self.lose_sound_sequence) and not self.sfx_channel.get_busy()))
+        if show_ui:
+            darkness = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            darkness.fill(BLACK)
+            darkness.set_alpha(150)
+            self.screen.blit(darkness, (0, 0))
+
+            l_img = R.get_image("img_lose")
+            l_rect = l_img.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
+            self.screen.blit(l_img, l_rect)
+
+            r_img = R.get_image("img_return")
+            r_rect = r_img.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 150))
+            self.screen.blit(r_img, r_rect)
 
         for e in events:
             if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:

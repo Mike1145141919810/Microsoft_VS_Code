@@ -53,6 +53,7 @@ class ResourceManager:
             self.load_image(f"BUGspage{i}", f"resource/UI/ARCHIVE/BUGspage{i}.png")
         self.load_image("bg_pause", "resource/UI/GAMING/suspension.png")
         self.load_image("img_lose", "resource/UI/GAMING/lose.png")
+        self.load_image("img_lose_bg", "resource/UI/GAMING/lose0.jpg")
         self.load_image("img_return", "resource/UI/GAMING/return_instruction.png")
         self.load_image("img_win_final", "resource/UI/GAMING/win0.png")
         self.load_image("img_win_normal", "resource/UI/CREDITS/credits.jpg")
