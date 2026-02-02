@@ -70,12 +70,12 @@ class Game:
             {"id": "1-2", "theme": 1, "d": 0.2, "final": False},
             {"id": "1-3", "theme": 1, "d": 0.4, "final": False},
             {"id": "1-4", "theme": 1, "d": 0.6, "final": False},
-            {"id": "1-5", "theme": 1, "d": 1.0, "final": False},
+            {"id": "1-5", "theme": 1, "d": 0.8, "final": False},
             {"id": "2-1", "theme": 2, "d": 0.0, "final": False},
             {"id": "2-2", "theme": 2, "d": 0.2, "final": False},
             {"id": "2-3", "theme": 2, "d": 0.4, "final": False},
             {"id": "2-4", "theme": 2, "d": 0.6, "final": False},
-            {"id": "2-5", "theme": 2, "d": 0.8, "final": True},
+            {"id": "2-5", "theme": 2, "d": 1.0, "final": True},
         ]
 
         self.level_buttons = {}
