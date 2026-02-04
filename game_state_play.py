@@ -16,18 +16,27 @@ from constants import (
 from entities import Enemy, Plant
 from resources import R
 from save_manager import SaveManager
-from waves import WaveManager, compute_level_difficulty, starting_money_for_level
+from waves import EndlessWaveManager, WaveManager, compute_level_difficulty, starting_money_for_level
 
 
 class GamePlayMixin:
     def start_game(self):
         self.state = "GAMING"
-        difficulty = compute_level_difficulty(self.selected_level)
-        self.money = starting_money_for_level(self.selected_level)
+        if self.game_mode == "ENDLESS":
+            if not self.selected_level:
+                self.selected_level = {"id": "ENDLESS", "theme": 1, "d": 0.4, "final": False}
+            difficulty = 1.0
+            self.money = starting_money_for_level(self.selected_level)
+        else:
+            difficulty = compute_level_difficulty(self.selected_level)
+            self.money = starting_money_for_level(self.selected_level)
         self.plants.empty()
         self.enemies.empty()
         self.bullets.empty()
-        self.wave_manager = WaveManager(self.selected_level, difficulty)
+        if self.game_mode == "ENDLESS":
+            self.wave_manager = EndlessWaveManager(difficulty=difficulty)
+        else:
+            self.wave_manager = WaveManager(self.selected_level, difficulty)
         now = pygame.time.get_ticks()
         self.game_start_tick = now
         self.guidance_show_until = now + 20000
@@ -89,7 +98,7 @@ class GamePlayMixin:
                 self.money += enemy.reward
                 self.enemies_killed += 1
 
-        if self.wave_manager:
+        if self.wave_manager and self.game_mode != "ENDLESS":
             spawning_done = self.wave_manager.finished_spawning
 
             if spawning_done:
@@ -138,6 +147,12 @@ class GamePlayMixin:
                 return
 
         self.draw_text(str(self.money), 90, 100, "default", BLACK)
+
+        if self.game_mode == "ENDLESS" and self.wave_manager and getattr(self.wave_manager, "wave_started_ts", 0):
+            wave_ts = self.wave_manager.wave_started_ts
+            if now - wave_ts < 2500:
+                wave_num = getattr(self.wave_manager, "wave_index", 1)
+                self.draw_text(f"第{wave_num}波", SCREEN_WIDTH // 2 - 60, 140, "title", RED)
 
         mx, my = pygame.mouse.get_pos()
 

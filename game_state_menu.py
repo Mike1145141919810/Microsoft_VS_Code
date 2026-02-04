@@ -22,6 +22,48 @@ from save_manager import SaveManager
 
 
 class GameMenuMixin:
+    def update_mode_select(self, events):
+        self.screen.blit(R.get_image("bg_credits"), (0, 0))
+
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((255, 255, 255, 120))
+        self.screen.blit(overlay, (0, 0))
+
+        mx, my = pygame.mouse.get_pos()
+
+        story_rect = self.mode_story_rect
+        endless_rect = self.mode_endless_rect
+
+        pygame.draw.rect(self.screen, (235, 235, 235), story_rect, border_radius=16)
+        pygame.draw.rect(self.screen, (235, 235, 235), endless_rect, border_radius=16)
+        pygame.draw.rect(self.screen, BLACK, story_rect, 3, border_radius=16)
+        pygame.draw.rect(self.screen, BLACK, endless_rect, 3, border_radius=16)
+
+        if story_rect.collidepoint(mx, my):
+            pygame.draw.rect(self.screen, HOVER_COLOR, story_rect, 4, border_radius=16)
+        if endless_rect.collidepoint(mx, my):
+            pygame.draw.rect(self.screen, HOVER_COLOR, endless_rect, 4, border_radius=16)
+
+        self.draw_text("STORY MODE", story_rect.centerx - 140, story_rect.centery - 20, "title", BLACK)
+        self.draw_text("ENDLESS MODE", endless_rect.centerx - 170, endless_rect.centery - 20, "title", BLACK)
+
+        for e in events:
+            if e.type == pygame.MOUSEBUTTONUP and e.button == 1:
+                if story_rect.collidepoint(e.pos):
+                    self.game_mode = "STORY"
+                    self.state = "LEVEL_SELECT"
+                    return
+                if endless_rect.collidepoint(e.pos):
+                    self.game_mode = "ENDLESS"
+                    self.selected_level = {"id": "ENDLESS", "theme": 1, "d": 0.4, "final": False}
+                    self.selected_plants_indices = []
+                    self.state = "PLANT_SELECT"
+                    return
+
+            if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
+                self.state = "MAIN_MENU"
+                return
+
     def update_story(self, events):
         self.screen.blit(R.get_image("bg_credits"), (0, 0))
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
@@ -76,7 +118,7 @@ class GameMenuMixin:
         if btn_start.collidepoint(mx, my):
             self.screen.blit(R.get_image("hl_start"), (0, 0))
             if self.mouse_ready() and pygame.mouse.get_pressed()[0]:
-                self.state = "LEVEL_SELECT"
+                self.state = "MODE_SELECT"
         elif btn_load.collidepoint(mx, my):
             self.screen.blit(R.get_image("hl_save"), (0, 0))
             if self.mouse_ready() and pygame.mouse.get_pressed()[0]:
@@ -294,7 +336,10 @@ class GameMenuMixin:
 
         for e in events:
             if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
-                self.state = "LEVEL_SELECT"
+                if self.game_mode == "ENDLESS":
+                    self.state = "MAIN_MENU"
+                else:
+                    self.state = "LEVEL_SELECT"
 
     def update_credits(self, events):
         self.screen.fill(WHITE)

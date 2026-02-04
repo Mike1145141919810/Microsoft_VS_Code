@@ -68,6 +68,7 @@ class Game(GameCommonMixin, GameMenuMixin, GamePlayMixin):
             pass
 
         self.state = "MAIN_MENU"
+        self.game_mode = "STORY"
         self.levels = [
             {"id": "1-1", "theme": 1, "d": 0.0, "final": False},
             {"id": "1-2", "theme": 1, "d": 0.2, "final": False},
@@ -114,6 +115,8 @@ class Game(GameCommonMixin, GameMenuMixin, GamePlayMixin):
                 y = SELECT_START_Y + r * SELECT_GAP_Y
                 self.plant_select_rects.append(pygame.Rect(x, y, SELECT_SLOT_SIZE, SELECT_SLOT_SIZE))
         self.ok_button = pygame.Rect(1350, 780, 150, 80)
+        self.mode_story_rect = pygame.Rect(80, 360, 600, 220)
+        self.mode_endless_rect = pygame.Rect(920, 360, 600, 220)
 
         self.slot_rects = []
         for i in range(10):
@@ -186,6 +189,8 @@ class Game(GameCommonMixin, GameMenuMixin, GamePlayMixin):
                 self.update_main_menu(events)
             elif self.state == "LEVEL_SELECT":
                 self.update_level_select(events)
+            elif self.state == "MODE_SELECT":
+                self.update_mode_select(events)
             elif self.state == "PLANT_SELECT":
                 self.update_plant_select(events)
             elif self.state == "GAMING":
