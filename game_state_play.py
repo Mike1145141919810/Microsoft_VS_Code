@@ -152,7 +152,7 @@ class GamePlayMixin:
             wave_ts = self.wave_manager.wave_started_ts
             if now - wave_ts < 2500:
                 wave_num = getattr(self.wave_manager, "wave_index", 1)
-                self.draw_text(f"第{wave_num}波", SCREEN_WIDTH // 2 - 60, 140, "title", RED)
+                self.draw_text(f"wave {wave_num}", SCREEN_WIDTH // 2 - 60, 140, "title", RED)
 
         mx, my = pygame.mouse.get_pos()
 
@@ -177,7 +177,7 @@ class GamePlayMixin:
                 self.screen.blit(mask, (slot_rect.x, slot_rect.y + (100 - h)))
 
             if self.money < stats["cost"]:
-                self.screen.blit(R.get_image("no_money"), (slot_rect.x, slot_rect.y - 10))
+                self.screen.blit(R.get_image("no_money"), (slot_rect.x, slot_rect.y + 5))
 
             if slot_rect.collidepoint(mx, my):
                 if self.mouse_ready() and pygame.mouse.get_pressed()[0] and not self.holding_shovel:

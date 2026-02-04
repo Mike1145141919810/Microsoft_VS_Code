@@ -97,7 +97,7 @@ PLANT_STATS = [
     {"name": "Clang", "desc": "LLVM Frontend", "hp": 180, "fire_rate": 1200, "cooldown": 10000, "damage": 25, "cost": 280, "type": "str"},
     {"name": "HTML", "desc": "Structure Block (Wall)", "hp": 500, "fire_rate": 1100, "cooldown": 3000, "damage": 0, "cost": 90, "type": "sur"},
     {"name": "JS", "desc": "Dynamic Script", "hp": 150, "fire_rate": 1200, "cooldown": 7000, "damage": 18, "cost": 150, "type": "str"},
-    {"name": "DevC++", "desc": "Heavy Striker", "hp": 100, "fire_rate": 1500, "cooldown": 5000, "damage": 60, "cost": 80, "type": "str"},
+    {"name": "DevC++", "desc": "Heavy Striker", "hp": 100, "fire_rate": 1500, "cooldown": 5000, "damage": 30, "cost": 80, "type": "str"},
     {"name": "GitHub", "desc": "Open Source (Generates $)", "hp": 50, "fire_rate": 5000, "cooldown": 10000, "damage": 0, "cost": 250, "type": "eco"},
     {"name": "Git", "desc": "Version Control", "hp": 100, "fire_rate": 2000, "cooldown": 10000, "damage": 20, "cost": 170, "type": "spe"},
 ]

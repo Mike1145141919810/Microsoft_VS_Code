@@ -179,10 +179,10 @@ class EndlessWaveManager:
 
     def _make_wave(self, wave_num):
         df = self.difficulty
-        base_total = 7 + (wave_num - 1) * (1.8 + 0.2 * df)
-        total = max(6, int(base_total * (0.9 + 0.15 * df)))
-        gap = max(420, int(1700 - wave_num * 40 - df * 80))
-        wave_gap = 15000
+        base_total = 7 + (wave_num - 1) * (1.9 + 0.2 * df)
+        total = max(6, int(base_total * (0.92 + 0.16 * df)))
+        gap = max(420, int(1650 - wave_num * 40 - df * 80))
+        wave_gap = 10000
         batch = min(7, 4 + wave_num // 3)
         weights = self._pool_for_wave(wave_num, df)
 
