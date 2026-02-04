@@ -21,7 +21,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='Microsoft_VS_Code_v0.0.1',
+    name='Microsoft_VS_Code_v0.1.0',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -40,5 +40,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='Microsoft_VS_Code_v0.0.1',
+    name='Microsoft_VS_Code_v0.1.0',
 )
