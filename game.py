@@ -60,7 +60,7 @@ class Game(GameCommonMixin, GameMenuMixin, GamePlayMixin):
         sfx_vol = self.settings.get("sfx_volume", 1.0)
         music_vol = self.settings.get("music_volume", 0.1)
         self.sfx_channel.set_volume(sfx_vol)
-        self.lose_sound_channel.set_volume(sfx_vol)
+        self.lose_sound_channel.set_volume(sfx_vol) 
         try:
             pygame.mixer.music.set_volume(music_vol)
             pygame.mixer.music.play(-1)
